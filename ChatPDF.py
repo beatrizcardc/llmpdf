@@ -18,6 +18,7 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Envie seu PDF ou TXT", type=["pdf", "txt"])
     save_download = st.checkbox("Salvar resultado para download", value=True)
 
+@st.cache_resource
 def load_llm():
     return pipeline("text2text-generation", model="t5-small", framework="pt")
 

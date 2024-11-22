@@ -1,6 +1,7 @@
 transformers
-tensorflow==2.13.0
+tensorflow
 torch
+pytorch
 torchvision
 torchaudio
 PyPDF2

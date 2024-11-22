@@ -1,28 +1,17 @@
 import streamlit as st
-from PyPDF2 import PdfReader
 from transformers import pipeline
-import os
 import tempfile
+from PyPDF2 import PdfReader
 
-# Configuração inicial
-st.set_page_config(page_title="PDF Conversational Assistant", page_icon="📄", layout="wide")
+# Configuração do Streamlit
+st.set_page_config(page_title="Assistente PDF com IA", page_icon="📄", layout="wide")
 
-# Barra lateral
-with st.sidebar:
-    st.header("Configurações")
-    action = st.selectbox(
-        "Escolha a ação:",
-        ["Resumo", "Extração de trecho", "Perguntas e respostas"]
-    )
-    st.markdown("### Faça upload do arquivo")
-    uploaded_file = st.file_uploader("Envie seu PDF ou TXT", type=["pdf", "txt"])
-    save_download = st.checkbox("Salvar resultado para download", value=True)
-
+# Função para carregar o modelo
 @st.cache_resource
-def load_llm():
-    return pipeline("text2text-generation", model="t5-small", framework="pt")
+def load_model():
+    return pipeline("summarization", model="t5-large", framework="tf")  # T5 Large para resumos mais completos
 
-# Função para ler arquivos PDF
+# Função para ler PDFs
 def read_pdf(file):
     reader = PdfReader(file)
     text = ""
@@ -30,61 +19,75 @@ def read_pdf(file):
         text += page.extract_text()
     return text
 
-# Função para ler arquivos TXT
-def read_txt(file):
-    return file.read().decode("utf-8")
+# Inicializa o app
+st.title("Assistente PDF com IA 📄")
 
-# Carregar modelo LLM (usando Ollama 3 ou similar)
-@st.cache_resource
-def load_llm():
-    return pipeline("text2text-generation", model="t5-small")  # Substitua pelo Ollama ou outro modelo
+# Barra lateral
+action = st.sidebar.selectbox("Escolha a ação", ["Resumo", "Perguntas e Respostas"])
+save_download = st.sidebar.checkbox("Salvar resultado para download", value=True)
 
-# Processamento do arquivo
+# Upload de arquivo
+uploaded_file = st.file_uploader("Envie um arquivo PDF ou TXT", type=["pdf", "txt"])
+
 if uploaded_file:
+    # Processar o conteúdo do arquivo
     with st.spinner("Carregando o arquivo..."):
         if uploaded_file.type == "application/pdf":
             content = read_pdf(uploaded_file)
         elif uploaded_file.type == "text/plain":
-            content = read_txt(uploaded_file)
+            content = uploaded_file.read().decode("utf-8")
         else:
             st.error("Formato de arquivo não suportado!")
             st.stop()
 
-    # Exibir texto carregado
-    st.subheader("Conteúdo do arquivo:")
     st.text_area("Texto carregado:", value=content[:5000], height=200)
 
-    # Ação selecionada
-    llm = load_llm()
-    if st.button("Executar"):
-        with st.spinner("Processando..."):
-            if action == "Resumo":
-                result = llm(content, max_length=100)
-            elif action == "Extração de trecho":
-                result = llm(f"Extraia trechos relevantes do seguinte texto:\n{content}", max_length=200)
-            elif action == "Perguntas e respostas":
-                question = st.text_input("Digite sua pergunta:")
-                if question:
-                    result = llm(f"Pergunta: {question}\nTexto: {content}", max_length=200)
+    # Carregar modelo
+    model = load_model()
+
+    if action == "Resumo":
+        if st.button("Gerar Resumo"):
+            with st.spinner("Gerando resumo..."):
+                # Gerar resumo do texto (de aproximadamente uma página)
+                result = model(f"Resuma o seguinte texto:\n{content}", max_length=1000, min_length=300, do_sample=False)
+                summary = result[0]["summary_text"] if result else "Nenhum resultado gerado."
+                st.subheader("Resumo:")
+                st.write(summary)
+
+                # Salvar resultado
+                if save_download:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
+                        tmp_file.write(summary.encode("utf-8"))
+                        st.download_button(
+                            "Baixar resumo",
+                            data=summary,
+                            file_name="resumo.txt",
+                            mime="text/plain"
+                        )
+
+    elif action == "Perguntas e Respostas":
+        question = st.text_input("Digite sua pergunta:")
+        if st.button("Obter Resposta"):
+            with st.spinner("Processando pergunta..."):
+                if question.strip():
+                    result = model(f"Pergunta: {question}\nTexto: {content}", max_length=500, do_sample=False)
+                    answer = result[0]["summary_text"] if result else "Nenhuma resposta encontrada."
+                    st.subheader("Resposta:")
+                    st.write(answer)
+
+                    # Salvar resultado
+                    if save_download:
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
+                            tmp_file.write(answer.encode("utf-8"))
+                            st.download_button(
+                                "Baixar resposta",
+                                data=answer,
+                                file_name="resposta.txt",
+                                mime="text/plain"
+                            )
                 else:
-                    st.warning("Digite uma pergunta para prosseguir!")
-                    result = None
+                    st.warning("Por favor, digite uma pergunta válida.")
 
-        # Exibir resultados
-        if result:
-            st.subheader("Resultado:")
-            st.write(result)
-
-            # Salvar resultado
-            if save_download:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
-                    tmp_file.write(result.encode("utf-8"))
-                    st.download_button(
-                        "Baixar resultado",
-                        data=result,
-                        file_name="resultado.txt",
-                        mime="text/plain"
-                    )
 
 # Logo e rodapé
 st.markdown("---")

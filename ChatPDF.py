@@ -85,3 +85,8 @@ if uploaded_file:
 # Logo e rodapé
 st.markdown("---")
 st.markdown("**Desenvolvido por Beatriz Cardoso Cunha**")
+
+
+# Logo e rodapé
+st.markdown("---")
+st.markdown("**Desenvolvido por Beatriz Cardoso Cunha**")

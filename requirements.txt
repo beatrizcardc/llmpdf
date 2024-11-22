@@ -1,9 +1,6 @@
 streamlit
 transformers
-torch
-PyPDF2
-tensorflow
-
-
-torchvision
+tensorflow==2.13.0
+keras==2.13.0
+tf-keras
 PyPDF2

@@ -9,7 +9,7 @@ st.set_page_config(page_title="Assistente PDF com IA", page_icon="📄", layout=
 # Função para carregar o modelo
 @st.cache_resource
 def load_model():
-    return pipeline("summarization", model="t5-small", framework="tf")  # T5 Large para resumos mais completos
+    return pipeline("summarization", model="t5-large", framework="tf")  # T5 Large para resumos mais completos
 
 # Função para ler PDFs
 def read_pdf(file):
